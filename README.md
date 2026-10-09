@@ -23,6 +23,33 @@ PostgreSQL 18.6에서 회원·게시판·게시글·댓글을 구현했다. 실�
 
 ## 접속과 재현
 
+### Docker 실행
+
+Docker를 설치하고 실행한 뒤 아래 명령으로 DB 컨테이너를 만든다. 공식 `postgres:18.6` 이미지를 사용하므로 별도 Dockerfile이나 `docker build`는 필요 없다. 이미지가 없으면 실행 시 내려받는다.
+
+```bash
+docker run -d \
+  --name bulletin-board-db \
+  -e POSTGRES_DB=bulletin_board \
+  -e POSTGRES_USER=admin \
+  -e POSTGRES_PASSWORD=admin \
+  -p 127.0.0.1:5433:5432 \
+  -v bulletin-board-admin-pgdata:/var/lib/postgresql \
+  postgres:18.6
+```
+
+`5433`은 로컬 접속 포트, `5432`는 컨테이너 안의 PostgreSQL 포트다. 이름 있는 볼륨에 데이터를 저장하며 PostgreSQL 18의 마운트 경로는 `/var/lib/postgresql`이다. `POSTGRES_*` 설정은 빈 데이터 볼륨을 처음 초기화할 때 적용된다.
+
+DB 준비 상태를 확인한다. 아직 준비되지 않았다면 잠시 후 같은 명령을 다시 실행한다.
+
+```bash
+docker exec bulletin-board-db pg_isready -U admin -d bulletin_board
+```
+
+이미 컨테이너가 있으면 `docker run`을 반복하지 않는다. 중지된 컨테이너는 `docker start bulletin-board-db`로 다시 실행한다. 위 명령은 DB 서버를 준비하며, 테이블과 샘플 데이터는 아래 SQL 실행 순서로 생성한다.
+
+### DB 접속과 SQL 실행
+
 현재 컨테이너는 `bulletin-board-db`, DB는 `bulletin_board`다. GUI 접속은 호스트 `127.0.0.1`, 포트 `5433`, 계정 `admin`, 비밀번호 `admin`을 사용한다. 터미널 접속:
 
 ```bash
