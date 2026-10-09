@@ -1,0 +1,16 @@
+# 미션 원문과 개인 계획 (로컬 파일은 유지)
+*.pdf
+*.PDF
+/plan.md
+/B6-1.md
+
+# macOS와 Python 생성 파일
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+
+# 로컬 환경 설정
+.env
+.env.*
+!.env.example

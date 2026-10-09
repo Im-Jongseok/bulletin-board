@@ -1,0 +1,121 @@
+BEGIN; CREATE INDEX IF NOT EXISTS idx_post_member_id ON post(member_id); CREATE INDEX IF NOT EXISTS idx_comment_post_created_at ON comment(post_id,created_at,id); CREATE INDEX IF NOT EXISTS idx_comment_member_id ON comment(member_id); COMMIT;
+BEGIN
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+COMMIT
+BEGIN;
+BEGIN
+SET LOCAL TIME ZONE 'Asia/Seoul';
+SET
+-- 기존 실습 게시판의 ID와 연결을 유지하면서 요청한 짧은 이름으로 바꾼다.
+UPDATE board SET name = '자유' WHERE name = '자유게시판';
+UPDATE 1
+UPDATE board SET name = '질문' WHERE name = '질문게시판';
+UPDATE 1
+-- 실습용 표시 문자열이며 로그인에 사용할 실제 비밀번호 해시가 아니다.
+INSERT INTO member (username, nickname, password_hash)
+VALUES
+    ('test_user', '테스트회원', 'demo-hash-not-for-login'),
+    ('user02', '민수', 'demo-hash-not-for-login'),
+    ('user03', '지수', 'demo-hash-not-for-login'),
+    ('user04', '하늘', 'demo-hash-not-for-login'),
+    ('user05', '바다', 'demo-hash-not-for-login'),
+    ('user06', '새싹', 'demo-hash-not-for-login'),
+    ('user07', '새싹', 'demo-hash-not-for-login'),
+    ('user08', '별빛', 'demo-hash-not-for-login'),
+    ('user09', '눈팅회원', 'demo-hash-not-for-login'),
+    ('user10', '신규회원', 'demo-hash-not-for-login')
+ON CONFLICT (username) DO NOTHING;
+INSERT 0 9
+INSERT INTO board (name, description)
+VALUES
+    ('자유', '자유로운 이야기'), ('질문', '질문과 답변'),
+    ('학습', '학습 기록'), ('프로젝트', '프로젝트 공유'),
+    ('취업', '취업 준비'), ('행사', '행사 안내'),
+    ('후기', '경험 후기'), ('자료', '학습 자료'),
+    ('취미', '취미 이야기'), ('건의', '개선 의견')
+ON CONFLICT (name) DO NOTHING;
+INSERT 0 8
+-- 생성 ID를 가정하지 않고 부모의 UNIQUE 값으로 FK를 찾는다.
+INSERT INTO post (board_id, member_id, title, content, view_count, created_at, updated_at)
+SELECT b.id, m.id, s.title, s.content, s.views, s.written_at, s.written_at
+FROM (VALUES
+    ('자유', 'test_user', '첫 글', '게시판 DB 실습 중입니다.', 0, TIMESTAMPTZ '2026-10-01 09:00:00+09'),
+    ('자유', 'user02', 'SQL 기초', 'SELECT 문을 연습합니다.', 10, TIMESTAMPTZ '2026-10-01 10:00:00+09'),
+    ('자유', 'user03', 'JOIN 연습', '테이블 연결을 연습합니다.', 20, TIMESTAMPTZ '2026-10-01 11:00:00+09'),
+    ('질문', 'user02', 'PostgreSQL 질문', '외래 키는 어떻게 설정하나요?', 120, TIMESTAMPTZ '2026-10-02 09:00:00+09'),
+    ('질문', 'user04', 'Docker 접속 질문', '포트 매핑을 확인하고 싶습니다.', 80, TIMESTAMPTZ '2026-10-02 10:00:00+09'),
+    ('학습', 'user03', 'NULL과 제약조건', 'NOT NULL의 역할을 정리합니다.', 30, TIMESTAMPTZ '2026-10-03 09:00:00+09'),
+    ('학습', 'user05', '인덱스 학습', '조회 조건에 맞는 인덱스를 알아봅니다.', 200, TIMESTAMPTZ '2026-10-03 10:00:00+09'),
+    ('프로젝트', 'user04', '프로젝트 소개', '게시판 프로젝트를 시작합니다.', 50, TIMESTAMPTZ '2026-10-04 09:00:00+09'),
+    ('프로젝트', 'user06', 'DB 설계 공유', 'ERD와 삭제 정책을 공유합니다.', 150, TIMESTAMPTZ '2026-10-04 10:00:00+09'),
+    ('취업', 'user05', '이력서 질문', '프로젝트 경험을 정리하고 있습니다.', 90, TIMESTAMPTZ '2026-10-05 09:00:00+09'),
+    ('취업', 'user07', '면접 SQL', 'SQL 면접 문제를 연습합니다.', 110, TIMESTAMPTZ '2026-10-05 10:00:00+09'),
+    ('행사', 'user06', '스터디 모집', '함께 DB를 공부할 회원을 모집합니다.', 40, TIMESTAMPTZ '2026-10-06 09:00:00+09'),
+    ('행사', 'user08', '개발 행사', '이번 주 개발 행사를 소개합니다.', 60, TIMESTAMPTZ '2026-10-06 10:00:00+09'),
+    ('후기', 'user07', 'DB 실습 후기', 'FK 오류를 해결한 경험입니다.', 70, TIMESTAMPTZ '2026-10-07 09:00:00+09'),
+    ('후기', 'user08', 'Docker 실습 후기', '로컬 컨테이너를 실행했습니다.', 0, TIMESTAMPTZ '2026-10-07 10:00:00+09'),
+    ('자료', 'test_user', 'SQL 자료', '집계 함수 예제 자료입니다.', 250, TIMESTAMPTZ '2026-10-08 09:00:00+09'),
+    ('자료', 'user02', 'PostgreSQL 자료', '공식 문서 학습 메모입니다.', 180, TIMESTAMPTZ '2026-10-08 10:00:00+09'),
+    ('취미', 'user03', '코딩 취미', '주말에 간단한 코드를 작성합니다.', 15, TIMESTAMPTZ '2026-10-08 11:00:00+09'),
+    ('취미', 'user04', '주말 계획', '휴식과 공부 계획을 적습니다.', 5, TIMESTAMPTZ '2026-10-08 12:00:00+09'),
+    ('학습', 'user08', '학습 계획', '다음 주에는 JOIN을 복습합니다.', 100, TIMESTAMPTZ '2026-10-08 13:00:00+09')
+) AS s(board_name, username, title, content, views, written_at)
+INNER JOIN board b ON b.name = s.board_name
+INNER JOIN member m ON m.username = s.username
+WHERE NOT EXISTS (
+    SELECT 1 FROM post p
+    WHERE p.board_id = b.id AND p.member_id = m.id AND p.title = s.title
+);
+INSERT 0 19
+-- 제목·글 작성자·게시판으로 실습 글을 찾는다. 본 스키마에서 제목은 UNIQUE가 아니다.
+INSERT INTO comment (post_id, member_id, content, created_at, updated_at)
+SELECT p.id, m.id, s.content, p.created_at + INTERVAL '1 day', p.created_at + INTERVAL '1 day'
+FROM (VALUES
+    ('첫 글', 'test_user', '자유', 'test_user', '첫 댓글'),
+    ('첫 글', 'test_user', '자유', 'user02', '환영합니다.'),
+    ('첫 글', 'test_user', '자유', 'user03', '함께 실습해요.'),
+    ('SQL 기초', 'user02', '자유', 'test_user', 'SELECT부터 시작해요.'),
+    ('SQL 기초', 'user02', '자유', 'user03', 'WHERE도 연습했습니다.'),
+    ('SQL 기초', 'user02', '자유', 'user04', '정렬이 이해됐어요.'),
+    ('SQL 기초', 'user02', '자유', 'user05', 'LIMIT이 유용하네요.'),
+    ('SQL 기초', 'user02', '자유', 'user06', '예제 감사합니다.'),
+    ('JOIN 연습', 'user03', '자유', 'user02', 'PK와 FK로 연결해요.'),
+    ('JOIN 연습', 'user03', '자유', 'user07', 'LEFT JOIN도 비교해요.'),
+    ('PostgreSQL 질문', 'user02', '질문', 'user04', 'REFERENCES를 사용해요.'),
+    ('PostgreSQL 질문', 'user02', '질문', 'user05', '부모 행이 먼저 필요해요.'),
+    ('PostgreSQL 질문', 'user02', '질문', 'user06', '없는 ID는 오류가 납니다.'),
+    ('Docker 접속 질문', 'user04', '질문', 'test_user', '로컬 포트는 5433입니다.'),
+    ('Docker 접속 질문', 'user04', '질문', 'user02', '컨테이너 포트는 5432예요.'),
+    ('NULL과 제약조건', 'user03', '학습', 'user04', 'NULL 입력을 막아줘요.'),
+    ('NULL과 제약조건', 'user03', '학습', 'user07', '빈 문자열은 CHECK로 확인해요.'),
+    ('인덱스 학습', 'user05', '학습', 'user03', '게시판별 정렬을 고려해요.'),
+    ('인덱스 학습', 'user05', '학습', 'user06', '작은 테이블은 순차 스캔도 선택해요.'),
+    ('인덱스 학습', 'user05', '학습', 'user08', '실행 계획을 확인해요.'),
+    ('프로젝트 소개', 'user04', '프로젝트', 'user05', '기본 기능부터 만들어요.'),
+    ('DB 설계 공유', 'user06', '프로젝트', 'user07', '댓글 삭제 정책을 확인했어요.'),
+    ('DB 설계 공유', 'user06', '프로젝트', 'user08', '회원 삭제는 제한합니다.'),
+    ('이력서 질문', 'user05', '취업', 'user06', '구현 결과를 구체적으로 적어요.'),
+    ('면접 SQL', 'user07', '취업', 'user02', 'GROUP BY를 복습해요.'),
+    ('스터디 모집', 'user06', '행사', 'user03', '참여하고 싶습니다.'),
+    ('개발 행사', 'user08', '행사', 'user04', '일정을 확인했습니다.'),
+    ('DB 실습 후기', 'user07', '후기', 'test_user', '오류도 좋은 학습 자료네요.'),
+    ('SQL 자료', 'test_user', '자료', 'user05', '집계 예제가 유용해요.'),
+    ('PostgreSQL 자료', 'user02', '자료', 'user08', '참고하겠습니다.')
+) AS s(post_title, post_author, board_name, username, content)
+INNER JOIN member author ON author.username = s.post_author
+INNER JOIN board b ON b.name = s.board_name
+INNER JOIN post p ON p.title = s.post_title AND p.member_id = author.id AND p.board_id = b.id
+INNER JOIN member m ON m.username = s.username
+WHERE NOT EXISTS (
+    SELECT 1 FROM comment c
+    WHERE c.post_id = p.id AND c.member_id = m.id AND c.content = s.content
+);
+INSERT 0 29
+COMMIT;
+COMMIT
+
+PASS 기존 5행의 ID·내용·시각·FK 보존 (게시판 이름 자유/질문 변경만 적용)
+PASS seed 재실행: 전체 행과 컬럼 동일; IDENTITY 증가값은 비교하지 않음
+PASS Q14/15: 각각 1행 변경, ROLLBACK 후 전체 데이터 동일

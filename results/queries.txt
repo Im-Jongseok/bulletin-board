@@ -1,0 +1,316 @@
+SET TIME ZONE 'Asia/Seoul';
+SET
+-- Q01 [기본 조회] 최근 게시글 10개를 작성 시각과 ID 역순으로 조회한다.
+SELECT id, title, view_count, created_at
+FROM post ORDER BY created_at DESC, id DESC LIMIT 10;
+ id |      title       | view_count |          created_at
+----+------------------+------------+------------------------------
+  1 | 첫 글            |          0 | 2026-10-09 17:07:52.83296+09
+  6 | 학습 계획        |        100 | 2026-10-08 13:00:00+09
+ 19 | 주말 계획        |          5 | 2026-10-08 12:00:00+09
+ 20 | 코딩 취미        |         15 | 2026-10-08 11:00:00+09
+ 17 | PostgreSQL 자료  |        180 | 2026-10-08 10:00:00+09
+ 18 | SQL 자료         |        250 | 2026-10-08 09:00:00+09
+ 15 | Docker 실습 후기 |          0 | 2026-10-07 10:00:00+09
+ 16 | DB 실습 후기     |         70 | 2026-10-07 09:00:00+09
+ 13 | 개발 행사        |         60 | 2026-10-06 10:00:00+09
+ 14 | 스터디 모집      |         40 | 2026-10-06 09:00:00+09
+(10 rows)
+
+-- Q02 [기본 조회] 제목에 SQL이 포함된 게시글을 찾는다.
+SELECT id, title FROM post WHERE title LIKE '%SQL%' ORDER BY id;
+ id |      title
+----+-----------------
+  3 | SQL 기초
+  5 | PostgreSQL 질문
+ 11 | 면접 SQL
+ 17 | PostgreSQL 자료
+ 18 | SQL 자료
+(5 rows)
+
+-- Q03 [기본 조회] 자유 게시판의 글을 최신순으로 조회한다.
+SELECT p.id, p.title, p.created_at
+FROM post p WHERE p.board_id = (SELECT id FROM board WHERE name = '자유')
+ORDER BY p.created_at DESC, p.id DESC;
+ id |   title   |          created_at
+----+-----------+------------------------------
+  1 | 첫 글     | 2026-10-09 17:07:52.83296+09
+  2 | JOIN 연습 | 2026-10-01 11:00:00+09
+  3 | SQL 기초  | 2026-10-01 10:00:00+09
+(3 rows)
+
+-- Q04 [기본 조회] 조회수가 100 이상인 글을 조회수 순으로 최대 5개 조회한다.
+SELECT id, title, view_count FROM post WHERE view_count >= 100
+ORDER BY view_count DESC, id DESC LIMIT 5;
+ id |      title      | view_count
+----+-----------------+------------
+ 18 | SQL 자료        |        250
+  7 | 인덱스 학습     |        200
+ 17 | PostgreSQL 자료 |        180
+  9 | DB 설계 공유    |        150
+  5 | PostgreSQL 질문 |        120
+(5 rows)
+
+-- Q05 [조인] 게시글에 작성자의 닉네임을 붙인다.
+SELECT p.id, p.title, m.nickname
+FROM post p INNER JOIN member m ON m.id = p.member_id ORDER BY p.id;
+ id |      title       |  nickname
+----+------------------+------------
+  1 | 첫 글            | 테스트회원
+  2 | JOIN 연습        | 지수
+  3 | SQL 기초         | 민수
+  4 | Docker 접속 질문 | 하늘
+  5 | PostgreSQL 질문  | 민수
+  6 | 학습 계획        | 별빛
+  7 | 인덱스 학습      | 바다
+  8 | NULL과 제약조건  | 지수
+  9 | DB 설계 공유     | 새싹
+ 10 | 프로젝트 소개    | 하늘
+ 11 | 면접 SQL         | 새싹
+ 12 | 이력서 질문      | 바다
+ 13 | 개발 행사        | 별빛
+ 14 | 스터디 모집      | 새싹
+ 15 | Docker 실습 후기 | 별빛
+ 16 | DB 실습 후기     | 새싹
+ 17 | PostgreSQL 자료  | 민수
+ 18 | SQL 자료         | 테스트회원
+ 19 | 주말 계획        | 하늘
+ 20 | 코딩 취미        | 지수
+(20 rows)
+
+-- Q06 [조인] 게시글에 소속 게시판 이름을 붙인다.
+SELECT p.id, p.title, b.name AS board_name
+FROM post p INNER JOIN board b ON b.id = p.board_id ORDER BY p.id;
+ id |      title       | board_name
+----+------------------+------------
+  1 | 첫 글            | 자유
+  2 | JOIN 연습        | 자유
+  3 | SQL 기초         | 자유
+  4 | Docker 접속 질문 | 질문
+  5 | PostgreSQL 질문  | 질문
+  6 | 학습 계획        | 학습
+  7 | 인덱스 학습      | 학습
+  8 | NULL과 제약조건  | 학습
+  9 | DB 설계 공유     | 프로젝트
+ 10 | 프로젝트 소개    | 프로젝트
+ 11 | 면접 SQL         | 취업
+ 12 | 이력서 질문      | 취업
+ 13 | 개발 행사        | 행사
+ 14 | 스터디 모집      | 행사
+ 15 | Docker 실습 후기 | 후기
+ 16 | DB 실습 후기     | 후기
+ 17 | PostgreSQL 자료  | 자료
+ 18 | SQL 자료         | 자료
+ 19 | 주말 계획        | 취미
+ 20 | 코딩 취미        | 취미
+(20 rows)
+
+-- Q07 [조인] 댓글 없는 글을 포함하여 글별 댓글 수를 계산한다.
+SELECT p.id, p.title, COUNT(c.id) AS comment_count
+FROM post p LEFT JOIN comment c ON c.post_id = p.id
+GROUP BY p.id, p.title ORDER BY p.id;
+ id |      title       | comment_count
+----+------------------+---------------
+  1 | 첫 글            |             3
+  2 | JOIN 연습        |             2
+  3 | SQL 기초         |             5
+  4 | Docker 접속 질문 |             2
+  5 | PostgreSQL 질문  |             3
+  6 | 학습 계획        |             0
+  7 | 인덱스 학습      |             3
+  8 | NULL과 제약조건  |             2
+  9 | DB 설계 공유     |             2
+ 10 | 프로젝트 소개    |             1
+ 11 | 면접 SQL         |             1
+ 12 | 이력서 질문      |             1
+ 13 | 개발 행사        |             1
+ 14 | 스터디 모집      |             1
+ 15 | Docker 실습 후기 |             0
+ 16 | DB 실습 후기     |             1
+ 17 | PostgreSQL 자료  |             1
+ 18 | SQL 자료         |             1
+ 19 | 주말 계획        |             0
+ 20 | 코딩 취미        |             0
+(20 rows)
+
+-- Q08 [조인] 댓글에 글 제목과 댓글 작성자의 닉네임을 붙인다.
+SELECT c.id, p.title, m.nickname, c.content
+FROM comment c INNER JOIN post p ON p.id = c.post_id
+INNER JOIN member m ON m.id = c.member_id ORDER BY c.id;
+ id |      title       |  nickname  |               content
+----+------------------+------------+-------------------------------------
+  1 | 첫 글            | 테스트회원 | 첫 댓글
+  3 | 첫 글            | 민수       | 환영합니다.
+  4 | 첫 글            | 지수       | 함께 실습해요.
+  5 | SQL 기초         | 테스트회원 | SELECT부터 시작해요.
+  6 | SQL 기초         | 지수       | WHERE도 연습했습니다.
+  7 | SQL 기초         | 하늘       | 정렬이 이해됐어요.
+  8 | SQL 기초         | 바다       | LIMIT이 유용하네요.
+  9 | SQL 기초         | 새싹       | 예제 감사합니다.
+ 10 | JOIN 연습        | 민수       | PK와 FK로 연결해요.
+ 11 | JOIN 연습        | 새싹       | LEFT JOIN도 비교해요.
+ 12 | PostgreSQL 질문  | 하늘       | REFERENCES를 사용해요.
+ 13 | PostgreSQL 질문  | 바다       | 부모 행이 먼저 필요해요.
+ 14 | PostgreSQL 질문  | 새싹       | 없는 ID는 오류가 납니다.
+ 15 | Docker 접속 질문 | 테스트회원 | 로컬 포트는 5433입니다.
+ 16 | Docker 접속 질문 | 민수       | 컨테이너 포트는 5432예요.
+ 17 | NULL과 제약조건  | 하늘       | NULL 입력을 막아줘요.
+ 18 | NULL과 제약조건  | 새싹       | 빈 문자열은 CHECK로 확인해요.
+ 19 | 인덱스 학습      | 지수       | 게시판별 정렬을 고려해요.
+ 20 | 인덱스 학습      | 새싹       | 작은 테이블은 순차 스캔도 선택해요.
+ 21 | 인덱스 학습      | 별빛       | 실행 계획을 확인해요.
+ 22 | 프로젝트 소개    | 바다       | 기본 기능부터 만들어요.
+ 23 | DB 설계 공유     | 새싹       | 댓글 삭제 정책을 확인했어요.
+ 24 | DB 설계 공유     | 별빛       | 회원 삭제는 제한합니다.
+ 25 | 이력서 질문      | 새싹       | 구현 결과를 구체적으로 적어요.
+ 26 | 면접 SQL         | 민수       | GROUP BY를 복습해요.
+ 27 | 스터디 모집      | 지수       | 참여하고 싶습니다.
+ 28 | 개발 행사        | 하늘       | 일정을 확인했습니다.
+ 29 | DB 실습 후기     | 테스트회원 | 오류도 좋은 학습 자료네요.
+ 30 | SQL 자료         | 바다       | 집계 예제가 유용해요.
+ 31 | PostgreSQL 자료  | 별빛       | 참고하겠습니다.
+(30 rows)
+
+-- Q09 [집계] 글 없는 회원을 포함하여 회원별 작성 글 수를 계산한다.
+SELECT m.username, m.nickname, COUNT(p.id) AS post_count
+FROM member m LEFT JOIN post p ON p.member_id = m.id
+GROUP BY m.id, m.username, m.nickname ORDER BY m.username;
+ username  |  nickname  | post_count
+-----------+------------+------------
+ test_user | 테스트회원 |          2
+ user02    | 민수       |          3
+ user03    | 지수       |          3
+ user04    | 하늘       |          3
+ user05    | 바다       |          2
+ user06    | 새싹       |          2
+ user07    | 새싹       |          2
+ user08    | 별빛       |          3
+ user09    | 눈팅회원   |          0
+ user10    | 신규회원   |          0
+(10 rows)
+
+-- Q10 [집계] 게시판별 조회수를 합산하고 글 없는 게시판은 0으로 표시한다.
+SELECT b.name, COALESCE(SUM(p.view_count), 0) AS total_views
+FROM board b LEFT JOIN post p ON p.board_id = b.id
+GROUP BY b.id, b.name ORDER BY b.name;
+   name   | total_views
+----------+-------------
+ 건의     |           0
+ 자료     |         430
+ 자유     |          30
+ 질문     |         200
+ 취미     |          20
+ 취업     |         200
+ 학습     |         330
+ 행사     |         100
+ 후기     |          70
+ 프로젝트 |         200
+(10 rows)
+
+-- Q11 [집계] 글이 있는 게시판의 평균 조회수를 소수점 둘째 자리까지 계산한다.
+SELECT b.name, ROUND(AVG(p.view_count), 2) AS average_views
+FROM board b INNER JOIN post p ON p.board_id = b.id
+GROUP BY b.id, b.name ORDER BY b.name;
+   name   | average_views
+----------+---------------
+ 자료     |        215.00
+ 자유     |         10.00
+ 질문     |        100.00
+ 취미     |         10.00
+ 취업     |        100.00
+ 학습     |        110.00
+ 행사     |         50.00
+ 후기     |         35.00
+ 프로젝트 |        100.00
+(9 rows)
+
+-- Q12 [서브쿼리] 전체 평균 조회수보다 조회수가 높은 글을 찾는다.
+SELECT id, title, view_count FROM post
+WHERE view_count > (SELECT AVG(view_count) FROM post)
+ORDER BY view_count DESC, id DESC;
+ id |      title       | view_count
+----+------------------+------------
+ 18 | SQL 자료         |        250
+  7 | 인덱스 학습      |        200
+ 17 | PostgreSQL 자료  |        180
+  9 | DB 설계 공유     |        150
+  5 | PostgreSQL 질문  |        120
+ 11 | 면접 SQL         |        110
+  6 | 학습 계획        |        100
+ 12 | 이력서 질문      |         90
+  4 | Docker 접속 질문 |         80
+(9 rows)
+
+-- Q13 [인덱스] 게시판 ID로 범위를 줄인 뒤 작성 시각·ID 역순으로 최신 목록을 찾기 위해 생성한다.
+CREATE INDEX IF NOT EXISTS idx_post_board_created_at ON post(board_id, created_at DESC, id DESC);
+CREATE INDEX
+BEGIN;
+BEGIN
+-- Q14 [수정] 첫 글의 제목과 수정 시각을 갱신하고 바뀐 행을 확인한다.
+UPDATE post SET title = '첫 글 (수정 실습)', updated_at = CURRENT_TIMESTAMP
+WHERE id = (
+    SELECT p.id FROM post p INNER JOIN member m ON m.id = p.member_id
+    INNER JOIN board b ON b.id = p.board_id
+    WHERE m.username = 'test_user' AND b.name = '자유' AND p.title = '첫 글'
+    ORDER BY p.id LIMIT 1
+)
+RETURNING id, title, updated_at;
+ id |       title       |          updated_at
+----+-------------------+-------------------------------
+  1 | 첫 글 (수정 실습) | 2026-10-09 17:30:54.662475+09
+(1 row)
+
+UPDATE 1
+-- Q15 [삭제] 첫 댓글 한 개를 삭제하고 삭제된 행을 확인한다.
+DELETE FROM comment WHERE id = (
+    SELECT c.id FROM comment c INNER JOIN member m ON m.id = c.member_id
+    INNER JOIN post p ON p.id = c.post_id
+    WHERE m.username = 'test_user' AND p.title = '첫 글 (수정 실습)' AND c.content = '첫 댓글'
+    ORDER BY c.id LIMIT 1
+)
+RETURNING id, post_id, content;
+ id | post_id | content
+----+---------+---------
+  1 |       1 | 첫 댓글
+(1 row)
+
+DELETE 1
+ROLLBACK;
+ROLLBACK
+
+-- Q07 보충 A: 같은 글을 INNER JOIN하면 댓글 없는 글은 결과에서 제외된다.
+SELECT p.title, c.id AS comment_id
+FROM post p INNER JOIN comment c ON c.post_id = p.id
+WHERE p.title IN ('SQL 기초', 'Docker 실습 후기') ORDER BY p.title, c.id;
+  title   | comment_id
+----------+------------
+ SQL 기초 |          5
+ SQL 기초 |          6
+ SQL 기초 |          7
+ SQL 기초 |          8
+ SQL 기초 |          9
+(5 rows)
+
+-- Q07 보충 B: LEFT JOIN은 댓글 없는 글도 유지하고 댓글 ID는 NULL이 된다.
+SELECT p.title, c.id AS comment_id
+FROM post p LEFT JOIN comment c ON c.post_id = p.id
+WHERE p.title IN ('SQL 기초', 'Docker 실습 후기') ORDER BY p.title, c.id;
+      title       | comment_id
+------------------+------------
+ Docker 실습 후기 |
+ SQL 기초         |          5
+ SQL 기초         |          6
+ SQL 기초         |          7
+ SQL 기초         |          8
+ SQL 기초         |          9
+(6 rows)
+
+-- Q07 보충 C: COUNT(*)는 남겨진 행도 세지만 COUNT(c.id)는 NULL을 세지 않는다.
+SELECT p.title, COUNT(*) AS joined_rows, COUNT(c.id) AS comment_count
+FROM post p LEFT JOIN comment c ON c.post_id = p.id
+WHERE p.title IN ('SQL 기초', 'Docker 실습 후기') GROUP BY p.id ORDER BY p.title;
+      title       | joined_rows | comment_count
+------------------+-------------+---------------
+ Docker 실습 후기 |           1 |             0
+ SQL 기초         |           5 |             5
+(2 rows)

@@ -1,0 +1,321 @@
+B6-1 검증 / DB: bulletin_board
+
+PASS PostgreSQL 18 이상
+SQL: SELECT current_setting('server_version_num')::integer >= 180000;
+결과:
+t
+
+PASS 테이블 4개
+SQL: SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';
+결과:
+4
+
+PASS PK 4개 / FK 4개
+SQL: SELECT contype,COUNT(*) FROM pg_constraint WHERE connamespace='public'::regnamespace AND contype IN ('p','f') GROUP BY contype ORDER BY contype;
+결과:
+f|4
+p|4
+
+PASS 전체 22개 컬럼 NOT NULL
+SQL: SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='public' AND is_nullable='NO';
+결과:
+22
+
+PASS 샘플 행 수
+SQL: SELECT 'member',COUNT(*) FROM member UNION ALL SELECT 'board',COUNT(*) FROM board UNION ALL SELECT 'post',COUNT(*) FROM post UNION ALL SELECT 'comment',COUNT(*) FROM comment;
+결과:
+member|10
+board|10
+post|20
+comment|30
+
+PASS 빈 회원 2명 / 빈 게시판 1개 / 댓글 없는 글 4개
+SQL: SELECT (SELECT COUNT(*) FROM member m WHERE NOT EXISTS (SELECT 1 FROM post p WHERE p.member_id=m.id) AND NOT EXISTS (SELECT 1 FROM comment c WHERE c.member_id=m.id)), (SELECT COUNT(*) FROM board b WHERE NOT EXISTS (SELECT 1 FROM post p WHERE p.board_id=b.id)), (SELECT COUNT(*) FROM post p WHERE NOT EXISTS (SELECT 1 FROM comment c WHERE c.post_id=p.id));
+결과:
+2|1|4
+
+PASS 닉네임 중복 허용 샘플
+SQL: SELECT COUNT(*) FROM member WHERE nickname='새싹';
+결과:
+2
+
+PASS 자유 게시판 SUM / AVG
+SQL: SELECT SUM(p.view_count),ROUND(AVG(p.view_count),2) FROM post p JOIN board b ON b.id=p.board_id WHERE b.name='자유';
+결과:
+30|10.00
+
+PASS 전체 조회수 합계 / 평균
+SQL: SELECT SUM(view_count),ROUND(AVG(view_count),2) FROM post;
+결과:
+1580|79.00
+
+PASS 평균보다 조회수가 높은 글
+SQL: SELECT title,view_count FROM post WHERE view_count > (SELECT AVG(view_count) FROM post) ORDER BY view_count DESC,id DESC;
+결과:
+SQL 자료|250
+인덱스 학습|200
+PostgreSQL 자료|180
+DB 설계 공유|150
+PostgreSQL 질문|120
+면접 SQL|110
+학습 계획|100
+이력서 질문|90
+Docker 접속 질문|80
+
+PASS 건의 게시판 합계 0
+SQL: SELECT COALESCE(SUM(p.view_count),0) FROM board b LEFT JOIN post p ON p.board_id=b.id WHERE b.name='건의';
+결과:
+0
+
+PASS 회원별 글 수
+SQL: SELECT m.username,COUNT(p.id) FROM member m LEFT JOIN post p ON p.member_id=m.id GROUP BY m.id ORDER BY m.username;
+결과:
+test_user|2
+user02|3
+user03|3
+user04|3
+user05|2
+user06|2
+user07|2
+user08|3
+user09|0
+user10|0
+
+PASS INNER JOIN: 댓글 없는 글 제외
+SQL: SELECT p.title,c.id FROM post p INNER JOIN comment c ON c.post_id=p.id WHERE p.title='Docker 실습 후기';
+결과:
+
+PASS LEFT JOIN: 댓글 없는 글 유지
+SQL: SELECT p.title,c.id FROM post p LEFT JOIN comment c ON c.post_id=p.id WHERE p.title='Docker 실습 후기';
+결과:
+Docker 실습 후기|
+
+PASS Q07: COUNT(*)와 COUNT(c.id)의 차이
+SQL: SELECT p.title,COUNT(*),COUNT(c.id) FROM post p LEFT JOIN comment c ON c.post_id=p.id WHERE p.title IN ('SQL 기초','Docker 실습 후기') GROUP BY p.id ORDER BY p.title;
+결과:
+Docker 실습 후기|1|0
+SQL 기초|5|5
+
+PASS 중복 username / 예상 SQLSTATE 23505
+SQL: INSERT INTO member(username,nickname,password_hash) VALUES('test_user','중복','demo');
+ERROR:  23505: duplicate key value violates unique constraint "member_username_key"
+DETAIL:  Key (username)=(test_user) already exists.
+SCHEMA NAME:  public
+TABLE NAME:  member
+CONSTRAINT NAME:  member_username_key
+LOCATION:  _bt_check_unique, nbtinsert.c:666
+
+PASS 중복 게시판 이름 / 예상 SQLSTATE 23505
+SQL: INSERT INTO board(name) VALUES('자유');
+ERROR:  23505: duplicate key value violates unique constraint "board_name_key"
+DETAIL:  Key (name)=(자유) already exists.
+SCHEMA NAME:  public
+TABLE NAME:  board
+CONSTRAINT NAME:  board_name_key
+LOCATION:  _bt_check_unique, nbtinsert.c:666
+
+PASS 필수 nickname NULL / 예상 SQLSTATE 23502
+SQL: UPDATE member SET nickname=NULL WHERE username='user02';
+ERROR:  23502: null value in column "nickname" of relation "member" violates not-null constraint
+DETAIL:  Failing row contains (4, user02, null, demo-hash-not-for-login, 2026-10-09 08:30:54.571761+00).
+SCHEMA NAME:  public
+TABLE NAME:  member
+COLUMN NAME:  nickname
+LOCATION:  ReportNotNullViolationError, execMain.c:2213
+
+PASS 빈 nickname / 예상 SQLSTATE 23514
+SQL: UPDATE member SET nickname='   ' WHERE username='user02';
+ERROR:  23514: new row for relation "member" violates check constraint "member_nickname_check"
+DETAIL:  Failing row contains (4, user02,    , demo-hash-not-for-login, 2026-10-09 08:30:54.571761+00).
+SCHEMA NAME:  public
+TABLE NAME:  member
+CONSTRAINT NAME:  member_nickname_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS username 최소 길이 / 예상 SQLSTATE 23514
+SQL: UPDATE member SET username='ab' WHERE username='user02';
+ERROR:  23514: new row for relation "member" violates check constraint "member_username_check"
+DETAIL:  Failing row contains (4, ab, 민수, demo-hash-not-for-login, 2026-10-09 08:30:54.571761+00).
+SCHEMA NAME:  public
+TABLE NAME:  member
+CONSTRAINT NAME:  member_username_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS username 앞뒤 공백 / 예상 SQLSTATE 23514
+SQL: UPDATE member SET username=' user02' WHERE username='user02';
+ERROR:  23514: new row for relation "member" violates check constraint "member_username_check"
+DETAIL:  Failing row contains (4,  user02, 민수, demo-hash-not-for-login, 2026-10-09 08:30:54.571761+00).
+SCHEMA NAME:  public
+TABLE NAME:  member
+CONSTRAINT NAME:  member_username_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS username 최대 길이 / 예상 SQLSTATE 22001
+SQL: UPDATE member SET username=repeat('x',31) WHERE username='user02';
+ERROR:  22001: value too long for type character varying(30)
+LOCATION:  varchar, varchar.c:637
+
+PASS 빈 password_hash / 예상 SQLSTATE 23514
+SQL: UPDATE member SET password_hash='' WHERE username='user02';
+ERROR:  23514: new row for relation "member" violates check constraint "member_password_hash_check"
+DETAIL:  Failing row contains (4, user02, 민수, , 2026-10-09 08:30:54.571761+00).
+SCHEMA NAME:  public
+TABLE NAME:  member
+CONSTRAINT NAME:  member_password_hash_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS 빈 게시판 이름 / 예상 SQLSTATE 23514
+SQL: UPDATE board SET name='  ' WHERE name='질문';
+ERROR:  23514: new row for relation "board" violates check constraint "board_name_check"
+DETAIL:  Failing row contains (2,   , 질문과 답변을 나누는 게시판).
+SCHEMA NAME:  public
+TABLE NAME:  board
+CONSTRAINT NAME:  board_name_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS post 없는 회원 참조 / 예상 SQLSTATE 23503
+SQL: UPDATE post SET member_id=-1 WHERE title='첫 글';
+ERROR:  23503: insert or update on table "post" violates foreign key constraint "post_member_id_fkey"
+DETAIL:  Key (member_id)=(-1) is not present in table "member".
+SCHEMA NAME:  public
+TABLE NAME:  post
+CONSTRAINT NAME:  post_member_id_fkey
+LOCATION:  ri_ReportViolation, ri_triggers.c:2772
+
+PASS post 없는 게시판 참조 / 예상 SQLSTATE 23503
+SQL: UPDATE post SET board_id=-1 WHERE title='첫 글';
+ERROR:  23503: insert or update on table "post" violates foreign key constraint "post_board_id_fkey"
+DETAIL:  Key (board_id)=(-1) is not present in table "board".
+SCHEMA NAME:  public
+TABLE NAME:  post
+CONSTRAINT NAME:  post_board_id_fkey
+LOCATION:  ri_ReportViolation, ri_triggers.c:2772
+
+PASS comment 없는 글 참조 / 예상 SQLSTATE 23503
+SQL: UPDATE comment SET post_id=-1 WHERE content='첫 댓글';
+ERROR:  23503: insert or update on table "comment" violates foreign key constraint "comment_post_id_fkey"
+DETAIL:  Key (post_id)=(-1) is not present in table "post".
+SCHEMA NAME:  public
+TABLE NAME:  comment
+CONSTRAINT NAME:  comment_post_id_fkey
+LOCATION:  ri_ReportViolation, ri_triggers.c:2772
+
+PASS comment 없는 회원 참조 / 예상 SQLSTATE 23503
+SQL: UPDATE comment SET member_id=-1 WHERE content='첫 댓글';
+ERROR:  23503: insert or update on table "comment" violates foreign key constraint "comment_member_id_fkey"
+DETAIL:  Key (member_id)=(-1) is not present in table "member".
+SCHEMA NAME:  public
+TABLE NAME:  comment
+CONSTRAINT NAME:  comment_member_id_fkey
+LOCATION:  ri_ReportViolation, ri_triggers.c:2772
+
+PASS 빈 제목 / 예상 SQLSTATE 23514
+SQL: UPDATE post SET title=' ' WHERE title='첫 글';
+ERROR:  23514: new row for relation "post" violates check constraint "post_title_check"
+DETAIL:  Failing row contains (1, 1, 1,  , 게시판 DB 실습 중입니다., 0, 2026-10-09 08:07:52.83296+00, 2026-10-09 08:07:52.83296+00).
+SCHEMA NAME:  public
+TABLE NAME:  post
+CONSTRAINT NAME:  post_title_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS 빈 본문 / 예상 SQLSTATE 23514
+SQL: UPDATE post SET content='' WHERE title='첫 글';
+ERROR:  23514: new row for relation "post" violates check constraint "post_content_check"
+DETAIL:  Failing row contains (1, 1, 1, 첫 글, , 0, 2026-10-09 08:07:52.83296+00, 2026-10-09 08:07:52.83296+00).
+SCHEMA NAME:  public
+TABLE NAME:  post
+CONSTRAINT NAME:  post_content_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS 빈 댓글 / 예상 SQLSTATE 23514
+SQL: UPDATE comment SET content=' ' WHERE content='첫 댓글';
+ERROR:  23514: new row for relation "comment" violates check constraint "comment_content_check"
+DETAIL:  Failing row contains (1, 1, 1,  , 2026-10-09 08:09:56.95047+00, 2026-10-09 08:09:56.95047+00).
+SCHEMA NAME:  public
+TABLE NAME:  comment
+CONSTRAINT NAME:  comment_content_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS 음수 조회수 / 예상 SQLSTATE 23514
+SQL: UPDATE post SET view_count=-1 WHERE title='첫 글';
+ERROR:  23514: new row for relation "post" violates check constraint "post_view_count_check"
+DETAIL:  Failing row contains (1, 1, 1, 첫 글, 게시판 DB 실습 중입니다., -1, 2026-10-09 08:07:52.83296+00, 2026-10-09 08:07:52.83296+00).
+SCHEMA NAME:  public
+TABLE NAME:  post
+CONSTRAINT NAME:  post_view_count_check
+LOCATION:  ExecConstraints, execMain.c:2076
+
+PASS 회원 삭제 RESTRICT / 예상 SQLSTATE 23001
+SQL: DELETE FROM member WHERE username='test_user';
+ERROR:  23001: update or delete on table "member" violates RESTRICT setting of foreign key constraint "post_member_id_fkey" on table "post"
+DETAIL:  Key (id)=(1) is referenced from table "post".
+SCHEMA NAME:  public
+TABLE NAME:  post
+CONSTRAINT NAME:  post_member_id_fkey
+LOCATION:  ri_ReportViolation, ri_triggers.c:2785
+
+PASS 댓글만 작성한 회원 삭제 RESTRICT / 예상 SQLSTATE 23001
+SQL: INSERT INTO member(username,nickname,password_hash) VALUES('comment_only','댓글회원','demo'); INSERT INTO comment(post_id,member_id,content) SELECT p.id,m.id,'삭제 제한 검증' FROM post p CROSS JOIN member m WHERE p.title='첫 글' AND m.username='comment_only'; DELETE FROM member WHERE username='comment_only';
+ERROR:  23001: update or delete on table "member" violates RESTRICT setting of foreign key constraint "comment_member_id_fkey" on table "comment"
+DETAIL:  Key (id)=(24) is referenced from table "comment".
+SCHEMA NAME:  public
+TABLE NAME:  comment
+CONSTRAINT NAME:  comment_member_id_fkey
+LOCATION:  ri_ReportViolation, ri_triggers.c:2785
+
+PASS 게시판 삭제 RESTRICT / 예상 SQLSTATE 23001
+SQL: DELETE FROM board WHERE name='자유';
+ERROR:  23001: update or delete on table "board" violates RESTRICT setting of foreign key constraint "post_board_id_fkey" on table "post"
+DETAIL:  Key (id)=(1) is referenced from table "post".
+SCHEMA NAME:  public
+TABLE NAME:  post
+CONSTRAINT NAME:  post_board_id_fkey
+LOCATION:  ri_ReportViolation, ri_triggers.c:2785
+
+PASS 댓글 삭제: 글 유지
+SQL: BEGIN; DELETE FROM comment WHERE content='첫 댓글'; SELECT COUNT(*) FROM post WHERE title='첫 글'; ROLLBACK;
+결과:
+BEGIN
+DELETE 1
+1
+ROLLBACK
+
+PASS 글 삭제 CASCADE: 연결 댓글 3개만 삭제, 부모 유지
+SQL: BEGIN; DELETE FROM post WHERE title='첫 글'; SELECT (SELECT COUNT(*) FROM post),(SELECT COUNT(*) FROM comment),(SELECT COUNT(*) FROM member),(SELECT COUNT(*) FROM board); ROLLBACK;
+결과:
+BEGIN
+DELETE 1
+19|27|10|10
+ROLLBACK
+
+PASS 정상 INSERT와 DEFAULT / RETURNING
+SQL: BEGIN; INSERT INTO board(name) VALUES('검증용') RETURNING description=''; INSERT INTO post(board_id,member_id,title,content) SELECT b.id,m.id,'검증 글','본문' FROM board b CROSS JOIN member m WHERE b.name='검증용' AND m.username='test_user' RETURNING view_count,created_at=updated_at; ROLLBACK;
+결과:
+BEGIN
+t
+INSERT 0 1
+0|t
+INSERT 0 1
+ROLLBACK
+
+PASS 수정 시각 직접 갱신
+SQL: BEGIN; UPDATE post SET title='검증 수정',updated_at=CURRENT_TIMESTAMP WHERE title='첫 글' RETURNING updated_at>=created_at; UPDATE comment SET content='검증 수정',updated_at=CURRENT_TIMESTAMP WHERE content='첫 댓글' RETURNING updated_at>=created_at; ROLLBACK;
+결과:
+BEGIN
+t
+UPDATE 1
+t
+UPDATE 1
+ROLLBACK
+
+PASS 보조 인덱스 4개
+SQL: SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN ('idx_post_board_created_at','idx_post_member_id','idx_comment_post_created_at','idx_comment_member_id');
+결과:
+4
+
+PASS 인덱스 컬럼과 정렬 방향
+SQL: SELECT indexdef FROM pg_indexes WHERE indexname='idx_post_board_created_at';
+결과:
+CREATE INDEX idx_post_board_created_at ON public.post USING btree (board_id, created_at DESC, id DESC)
+
+PASS 검증 전후 네 테이블 전체 행과 컬럼 동일 (IDENTITY 시퀀스의 증가값은 비교하지 않음)
