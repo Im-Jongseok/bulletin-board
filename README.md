@@ -48,25 +48,41 @@ docker exec bulletin-board-db pg_isready -U admin -d bulletin_board
 
 이미 컨테이너가 있으면 `docker run`을 반복하지 않는다. 중지된 컨테이너는 `docker start bulletin-board-db`로 다시 실행한다. 위 명령은 DB 서버를 준비하며, 테이블과 샘플 데이터는 아래 SQL 실행 순서로 생성한다.
 
-### DB 접속과 SQL 실행
+### 테이블과 샘플 데이터 생성
 
-현재 컨테이너는 `bulletin-board-db`, DB는 `bulletin_board`다. GUI 접속은 호스트 `127.0.0.1`, 포트 `5433`, 계정 `admin`, 비밀번호 `admin`을 사용한다. 터미널 접속:
+Docker 실행만으로는 빈 `bulletin_board` DB만 생성된다. **처음 사용하는 빈 DB에서**, 프로젝트 폴더의 일반 터미널에서 아래 명령을 순서대로 실행한다. psql에 접속한 상태라면 `\q`로 먼저 나온다. `schema.sql`은 한 번만 실행하며, 테이블이 이미 있는 DB에는 다시 실행하지 않는다.
+
+```bash
+docker exec -i bulletin-board-db psql -X -U admin -d bulletin_board -v ON_ERROR_STOP=1 < sql/schema.sql
+docker exec -i bulletin-board-db psql -X -U admin -d bulletin_board -v ON_ERROR_STOP=1 < sql/seed.sql
+docker exec -i bulletin-board-db psql -X -U admin -d bulletin_board -v ON_ERROR_STOP=1 < sql/queries.sql
+```
+
+`ON_ERROR_STOP=1`은 오류 발생 시 실행을 멈춘다. schema·seed는 각각 트랜잭션으로 실행된다. queries는 조회와 인덱스를 실행하고 Q14·Q15만 트랜잭션으로 묶어 롤백한다. Q13은 인덱스를 유지한다.
+
+### DB 접속과 테이블 확인
+
+SQL을 실행한 같은 DB에 접속한다. GUI 접속은 호스트 `127.0.0.1`, 포트 `5433`, DB `bulletin_board`, 계정 `admin`, 비밀번호 `admin`을 사용한다.
 
 ```bash
 docker exec -it bulletin-board-db psql -X -U admin -d bulletin_board
 ```
 
-SQL은 프로젝트 폴더에서 다음 순서로 실행한다. **schema.sql은 빈 DB에서 한 번 실행**한다. 기존 실습 DB에 다시 실행하면 테이블 중복 오류가 나므로 재현용 DB를 새로 만든다.
+psql 안에서 실행한다. `\dt`는 현재 DB의 테이블 목록을 보는 명령이다.
 
-```bash
-docker exec bulletin-board-db createdb -U admin bulletin_board_practice
-docker exec -i bulletin-board-db psql -X -U admin -d bulletin_board_practice -v ON_ERROR_STOP=1 < sql/schema.sql
-docker exec -i bulletin-board-db psql -X -U admin -d bulletin_board_practice -v ON_ERROR_STOP=1 < sql/seed.sql
-docker exec -i bulletin-board-db psql -X -U admin -d bulletin_board_practice -v ON_ERROR_STOP=1 < sql/queries.sql
-python3 tests/verify.py bulletin_board_practice /tmp/bulletin-board-practice-check.txt
+```text
+\conninfo
+\dt public.*
+select * from post;
 ```
 
-재현용 DB 이름이 이미 있으면 다른 이름을 사용한다. `ON_ERROR_STOP=1`은 오류 발생 시 실행을 멈춘다. schema·seed는 각각 트랜잭션으로 실행된다. queries는 조회와 인덱스를 실행하고 Q14·Q15만 트랜잭션으로 묶어 롤백한다. Q13은 인덱스를 유지한다.
+member·board·post·comment 네 테이블과 게시글 20행이 보여야 한다. 일반 터미널에서 전체 검증을 실행할 수도 있다.
+
+```bash
+python3 tests/verify.py bulletin_board /tmp/bulletin-board-check.txt
+```
+
+기존 README의 재현 명령을 따라 `bulletin_board_practice`에 SQL을 실행했다면 psql에서 `\c bulletin_board_practice`로 전환해야 그 테이블이 보인다. 테이블은 DB마다 별도로 저장된다.
 
 seed는 이 실습 데이터를 다시 넣을 때 기존 행을 중복 추가하지 않도록 작성했다. 실습 글은 게시판·작성자·제목, 댓글은 글·작성자·내용으로 찾는다. 제목 자체에는 UNIQUE 제약이 없으므로 다른 데이터를 자유롭게 추가한 DB에 대한 범용 동기화 기능은 아니다. 검증 스크립트도 이 샘플 데이터의 예상값을 기준으로 검사한다.
 
